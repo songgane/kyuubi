@@ -1,0 +1,396 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Default values for kyuubi.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Kyuubi server numbers
+replicaCount: 1
+
+# controls how Kyuubi server pods are created during initial scale up,
+# when replacing pods on nodes, or when scaling down.
+# The default policy is `OrderedReady`, alternative policy is `Parallel`.
+podManagementPolicy: OrderedReady
+
+# Minimum number of seconds for which a newly created kyuubi server
+# should be ready without any of its container crashing for it to be considered available.
+minReadySeconds: 30
+
+# maximum number of revisions that will be maintained in the StatefulSet's revision history.
+revisionHistoryLimit: 10
+
+# indicates the StatefulSetUpdateStrategy that will be employed to update Kyuubi server Pods in the StatefulSet
+# when a revision is made to Template.
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    partition: 0
+
+image:
+  repository: apache/kyuubi
+  pullPolicy: IfNotPresent
+  tag: 1.9.2-all
+
+imagePullSecrets: []
+
+# ServiceAccount used for Kyuubi create/list/delete pod in Kubernetes
+serviceAccount:
+  # Specifies whether a ServiceAccount should be created
+  create: true
+  # Specifies ServiceAccount name to be used (created if `create: true`)
+  name: kyuubi
+  # Annotations to add to the ServiceAccount
+  annotations: {}
+
+# priorityClass used for Kyuubi server pod
+priorityClass:
+  # Specifies whether a priorityClass should be created
+  create: false
+  # Specifies priorityClass name to be used (created if `create: true`)
+  name: ~
+  # half of system-cluster-critical by default
+  value: 1000000000
+
+# Role-based access control
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
+  # RBAC rules
+  rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["create", "get","list", "delete","watch","update", "deletecollection"]
+    - apiGroups: [""]
+      resources: ["services"]
+      verbs: ["create", "list", "delete", "patch", "deletecollection"]
+    - apiGroups: [""]
+      resources: ["configmaps"]
+      verbs: ["create", "list", "delete", "patch", "deletecollection"]
+    - apiGroups: [""]
+      resources: ["persistentvolumeclaims"]
+      verbs: ["create", "list", "delete", "patch", "deletecollection"]
+server:
+  # Thrift Binary protocol (HiveServer2 compatible)
+  thriftBinary:
+    enabled: true
+    port: 10009
+    service:
+      type: ClusterIP
+      port: "{{ .Values.server.thriftBinary.port }}"
+      nodePort: 30009
+      annotations: {}
+      # candidates are ClientIP or None
+      # https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+      sessionAffinity: ~
+      sessionAffinityConfig: {}
+      #  sessionAffinityConfig:
+      #    clientIP:
+      #      timeoutSeconds: 10800
+
+  # Thrift HTTP protocol (HiveServer2 compatible)
+  thriftHttp:
+    enabled: false
+    port: 10010
+    service:
+      type: ClusterIP
+      port: "{{ .Values.server.thriftHttp.port }}"
+      nodePort: ~
+      annotations: {}
+      # candidates are ClientIP or None
+      # https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+      sessionAffinity: ~
+      sessionAffinityConfig: {}
+      #  sessionAffinityConfig:
+      #    clientIP:
+      #      timeoutSeconds: 10800
+
+  # REST API protocol (experimental)
+  rest:
+    enabled: true
+    port: 10099
+    service:
+      type: ClusterIP
+      port: "{{ .Values.server.rest.port }}"
+      nodePort: 30099
+      annotations: {}
+      # candidates are ClientIP or None
+      # https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+      sessionAffinity: ~
+      sessionAffinityConfig: {}
+      #  sessionAffinityConfig:
+      #    clientIP:
+      #      timeoutSeconds: 10800
+
+  # MySQL compatible text protocol (experimental)
+  mysql:
+    enabled: true
+    port: 3309
+    service:
+      type: ClusterIP
+      port: "{{ .Values.server.mysql.port }}"
+      nodePort: 30309
+      annotations: {}
+      # candidates are ClientIP or None
+      # https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+      sessionAffinity: ~
+      sessionAffinityConfig: {}
+      #  sessionAffinityConfig:
+      #    clientIP:
+      #      timeoutSeconds: 10800
+
+# $KYUUBI_CONF_DIR directory
+kyuubiConfDir: /opt/kyuubi/conf
+# Kyuubi configuration files
+kyuubiConf:
+  # The value (templated string) is used for kyuubi-env.sh file
+  # See example at conf/kyuubi-env.sh.template and https://kyuubi.readthedocs.io/en/master/configuration/settings.html#environments for more details
+  kyuubiEnv: |
+    export SPARK_HOME=/opt/kyuubi/externals/spark-3.5.1-bin-hadoop3
+    export SPARK_CONF_DIR=/opt/kyuubi/externals/spark-3.5.1-bin-hadoop3/conf
+    export SPARK_ENGINE_HOME=/opt/kyuubi/externals/engines/spark
+    export TRINO_ENGINE_HOME=/opt/kyuubi/externals/engines/trino
+    export HIVE_ENGINE_HOME=/opt/kyuubi/externals/engines/hive
+    export JAVA_HOME=/opt/java/openjdk
+
+  # The value (templated string) is used for kyuubi-defaults.conf file
+  # See https://kyuubi.readthedocs.io/en/master/configuration/settings.html#kyuubi-configurations for more details
+  # 
+  # spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension
+  # spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
+  kyuubiDefaults: |
+    kyuubi.authentication=NONE
+    spark.kubernetes.file.upload.path=/opt/spark/work-dir/data/tmp
+    spark.kubernetes.container.image=apache/spark:3.5.3
+    kyuubi.kubernetes.namespace=kyuubi
+    spark.kubernetes.namespace=kyuubi
+    kyuubi.frontend.bind.host=0.0.0.0
+    kyuubi.engine.type=SPARK_SQL
+    kyuubi.engine.share.level=USER
+    kyuubi.session.engine.initialize.timeout=1000000
+    spark.submit.deployMode=cluster
+    spark.executor.instances=2
+    
+    spark.kubernetes.authenticate.driver.serviceAccountName=kyuubi
+
+    spark.kubernetes.executor.volumes.persistentVolumeClaim.data-folder.mount.path=/opt/spark/work-dir/data
+    spark.kubernetes.executor.volumes.persistentVolumeClaim.data-folder.options.claimName=data-folder
+    spark.kubernetes.driver.volumes.persistentVolumeClaim.data-folder.mount.path=/opt/spark/work-dir/data
+    spark.kubernetes.driver.volumes.persistentVolumeClaim.data-folder.options.claimName=data-folder
+    spark.kubernetes.authenticate.driver.serviceAccountName=kyuubi
+    spark.sql.warehouse.dir=file:///opt/spark/work-dir/data/spark-warehouse
+    hive.metastore.warehouse.dir=file:///opt/spark/work-dir/data/spark-warehouse
+
+    # spark.kubernetes.driver.ownPersistentVolumeClaim=true
+    # spark.kubernetes.driver.reusePersistentVolumeClaim=true
+    # spark.kubernetes.driver.waitToReusePersistentVolumeClaim=true
+    # # spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.options.claimName=check-point-pvc-claim
+    # spark.kubernetes.driver.volumes.persistentVolumeClaim.data.options.claimName=OnDemand
+    # spark.kubernetes.driver.volumes.persistentVolumeClaim.data.mount.path=/opt/spark/work-dir/data
+
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.data.options.claimName=OnDemand
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.data.options.storageClass=rbd
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.data.options.sizeLimit=10G
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.data.mount.readOnly=false
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.data.mount.path=/opt/spark/work-dir/data
+
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-local-dir-1.options.claimName=OnDemand
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-local-dir-1.options.storageClass=local-storage
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-local-dir-1.options.sizeLimit=10Gi
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-local-dir-1.mount.path=/opt/spark/work-dir/scratch
+    # spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-local-dir-1.mount.readOnly=false
+    # spark.shuffle.sort.io.plugin.class=org.apache.spark.shuffle.KubernetesLocalDiskShuffleDataIO
+
+    # spark.kubernetes.memoryOverheadFactor="0.2"
+    # spark.eventLog.enabled="true"
+    # spark.eventLog.dir="s3a://tlake/spark-events"
+    # spark.history.fs.logDirectory="s3a://tlake/spark-events"
+    # spark.history.fs.cleaner.enabled="true"
+    # spark.history.fs.cleaner.maxAge="3d"
+    # spark.history.fs.update.interval="60s"
+    # spark.history.fs.eventLog.rolling.maxFilesToRetain="5"
+    # spark.history.ui.port="18080"
+    # spark.hadoop.fs.s3a.endpoint="http://s3.skt-edp.com"
+    # spark.hadoop.fs.s3a.access.key="minioadmin"
+    # spark.hadoop.fs.s3a.secret.key="minioadmin"
+    # spark.hadoop.fs.s3a.impl="org.apache.hadoop.fs.s3a.S3AFileSystem"
+    # spark.hadoop.fs.s3a.connection.ssl.enabled="false"
+    # spark.hadoop.fs.s3a.path.style.access="true"
+    # spark.hadoop.fs.s3a.buffer.dir="/tmp"
+    # spark.hadoop.fs.s3a.fast.upload.buffer="bytebuffer"
+    # spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled="true"
+    # spark.serializer="org.apache.spark.serializer.KryoSerializer"
+    # spark.sql.extensions="org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
+    # spark.sql.catalogImplementation="in-memory"
+    # spark.sql.catalog.iceberg_jdbc="org.apache.iceberg.spark.SparkCatalog"
+    # spark.sql.catalog.iceberg_jdbc.catalog-impl="org.apache.iceberg.jdbc.JdbcCatalog"
+    # spark.sql.catalog.iceberg_jdbc.uri="jdbc:mysql://10.10.27.21:3306/iceberg"
+    # spark.sql.catalog.iceberg_jdbc.warehouse="s3://tlake/warehouse"
+    # spark.sql.catalog.iceberg_jdbc.io-impl="org.apache.iceberg.aws.s3.S3FileIO"
+    # spark.sql.catalog.iceberg_jdbc.jdbc.verifyServerCertificate="false"
+    # spark.sql.catalog.iceberg_jdbc.jdbc.useSSL="false"
+    # spark.sql.catalog.iceberg_jdbc.jdbc.user="iceberg"
+    # spark.sql.catalog.iceberg_jdbc.jdbc.password="iceberg"
+    # spark.sql.catalog.iceberg_jdbc.s3.endpoint="http://s3.skt-edp.com"
+    # spark.sql.catalog.iceberg_jdbc.s3.path-style-access="true"
+    # spark.sql.catalog.iceberg="org.apache.iceberg.spark.SparkCatalog"
+    # spark.sql.catalog.iceberg.type="hive"
+    # spark.kubernetes.driver.volumns.persistentvolumnclaim.spark-local-dir-1.mount.path=/data
+    # spark.kubernetes.driver.volumns.persistentvolumnclaim.spark-local-dir-1.mount.readonly=false
+    # spark.hadoop.mapreduce.fileouputcommitter.algorithm.version=2
+
+  # The value (templated string) is used for log4j2.xml file
+  # See example at conf/log4j2.xml.template https://kyuubi.readthedocs.io/en/master/configuration/settings.html#logging for more details
+  log4j2: ~
+
+# $SPARK_CONF_DIR directory
+sparkConfDir: /opt/spark/conf
+# Spark configuration files
+sparkConf:
+  # The value (templated string) is used for spark-env.sh file
+  # See example at https://github.com/apache/spark/blob/master/conf/spark-env.sh.template and Spark documentation for more details
+  sparkEnv: ~
+  #  sparkEnv: |
+  #    #!/usr/bin/env bash
+  #    export JAVA_HOME=/usr/jdk64/jdk1.8.0_152
+  #    export SPARK_LOG_DIR=/opt/spark/logs
+  #    export SPARK_LOG_MAX_FILES=5
+
+  # The value (templated string) is used for spark-defaults.conf file
+  # See example at https://github.com/apache/spark/blob/master/conf/spark-defaults.conf.template and Spark documentation for more details
+  sparkDefaults: ~
+  #  sparkDefaults: |
+  #    spark.submit.deployMode=cluster
+  #    spark.kubernetes.container.image=apache/spark:3.5.0
+  #    spark.kubernetes.authenticate.driver.serviceAccountName=spark
+  #    spark.kubernetes.file.upload.path=s3a://kyuubi/spark
+  #    # S3 dependencies
+  #    spark.jars.packages=org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262
+  #    spark.driver.extraJavaOptions=-Divy.cache.dir=/tmp -Divy.home=/tmp
+  #    # S3A configuration
+  #    spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+  #    spark.hadoop.fs.s3a.endpoint=http://object-storage:80
+  #    spark.hadoop.fs.s3a.access.key=******
+  #    spark.hadoop.fs.s3a.secret.key=********
+  #    spark.hadoop.fs.s3a.path.style.access=true
+  #    spark.hadoop.fs.s3a.fast.upload=true
+
+  # The value (templated string) is used for log4j2.properties file
+  # See example at https://github.com/apache/spark/blob/master/conf/log4j2.properties.template and Spark documentation for more details
+  log4j2: ~
+
+  # The value (templated string) is used for metrics.properties file
+  # See example at https://github.com/apache/spark/blob/master/conf/metrics.properties.template and Spark documentation for more details
+  metrics: ~
+
+# Command to launch Kyuubi server (templated)
+command: ~
+# Arguments to launch Kyuubi server (templated)
+args: ~
+
+# Environment variables (templated)
+env: []
+# Environment variables from ConfigMaps and Secrets (templated)
+envFrom: []
+
+# Additional volumes for Kyuubi pod (templated)
+volumes:
+  - name: volume
+    persistentVolumeClaim:
+      claimName: data-folder
+# Additional volumeMounts for Kyuubi container (templated)
+volumeMounts:
+  - name: volume
+    mountPath: /opt/spark/work-dir/data
+
+# Additional init containers for Kyuubi pod (templated)
+initContainers: []
+# Additional containers for Kyuubi pod (templated)
+containers: []
+
+# Resource requests and limits for Kyuubi pods
+resources: {}
+#  resources:
+#    requests:
+#      cpu: 2
+#      memory: 4Gi
+#    limits:
+#      cpu: 4
+#      memory: 10Gi
+
+# Liveness probe
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 10
+  successThreshold: 1
+
+# Readiness probe
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 10
+  successThreshold: 1
+
+# Constrain Kyuubi pods to nodes with specific node labels
+nodeSelector: {}
+# Allow to schedule Kyuubi pods on nodes with matching taints
+tolerations: []
+# Constrain Kyuubi pods to nodes by complex affinity/anti-affinity rules
+affinity: {}
+
+# Kyuubi pods security context
+securityContext:
+  runAsUser: 10009
+  # runAsGroup: 10009
+  fsGroup: 10009
+
+# Metrics configuration
+metrics:
+  # Enable metrics system, used for 'kyuubi.metrics.enabled' property
+  enabled: true
+  # A comma-separated list of metrics reporters, used for 'kyuubi.metrics.reporters' property
+  reporters: PROMETHEUS
+  # Prometheus port, used for 'kyuubi.metrics.prometheus.port' property
+  prometheusPort: 10019
+
+  # PodMonitor by Prometheus Operator
+  podMonitor:
+    # Enable PodMonitor creation
+    enabled: false
+    # List of pod endpoints serving metrics to be scraped by Prometheus, see Prometheus Operator docs for more details
+    podMetricsEndpoints: []
+
+  # ServiceMonitor by Prometheus Operator
+  serviceMonitor:
+    # Enable ServiceMonitor creation
+    enabled: false
+    # List of service endpoints serving metrics to be scraped by Prometheus, see Prometheus Operator docs for more details
+    endpoints: []
+    # Additional labels to be used to make ServiceMonitor discovered by Prometheus
+    labels: {}
+
+  # PrometheusRule by Prometheus Operator
+  prometheusRule:
+    # Enable PrometheusRule creation
+    enabled: false
+    # Content of Prometheus rule file
+    groups: []
