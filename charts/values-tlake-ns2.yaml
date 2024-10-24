@@ -159,41 +159,86 @@ kyuubiConfDir: /opt/kyuubi/conf
 kyuubiConf:
   # The value (templated string) is used for kyuubi-env.sh file
   # See example at conf/kyuubi-env.sh.template and https://kyuubi.readthedocs.io/en/master/configuration/settings.html#environments for more details
-  kyuubiEnv: |
-    export SPARK_HOME=/opt/kyuubi/externals/spark-3.5.1-bin-hadoop3
-    export SPARK_CONF_DIR=/opt/kyuubi/externals/spark-3.5.1-bin-hadoop3/conf
-    export SPARK_ENGINE_HOME=/opt/kyuubi/externals/engines/spark
-    export TRINO_ENGINE_HOME=/opt/kyuubi/externals/engines/trino
-    export HIVE_ENGINE_HOME=/opt/kyuubi/externals/engines/hive
-    export JAVA_HOME=/opt/java/openjdk
+  kyuubiEnv: ~
+  # /kyuubi/bin/load-kyuubi-env.sh
+  #    export SPARK_HOME=/opt/kyuubi/externals/spark-3.5.1-bin-hadoop3
+  #    export SPARK_CONF_DIR=/opt/kyuubi/externals/spark-3.5.1-bin-hadoop3/conf
+  #    export SPARK_ENGINE_HOME=/opt/kyuubi/externals/engines/spark
+  #    export TRINO_ENGINE_HOME=/opt/kyuubi/externals/engines/trino
+  #    export HIVE_ENGINE_HOME=/opt/kyuubi/externals/engines/hive
+  #    export JAVA_HOME=/opt/java/openjdk
 
   # The value (templated string) is used for kyuubi-defaults.conf file
   # See https://kyuubi.readthedocs.io/en/master/configuration/settings.html#kyuubi-configurations for more details
-  # 
-  # spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension
-  # spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
   kyuubiDefaults: |
-    kyuubi.authentication=NONE
-    spark.kubernetes.file.upload.path=/opt/spark/work-dir/data/tmp
-    spark.kubernetes.container.image=apache/spark:3.5.3
-    kyuubi.kubernetes.namespace=kyuubi
-    spark.kubernetes.namespace=kyuubi
-    kyuubi.frontend.bind.host=0.0.0.0
-    kyuubi.engine.type=SPARK_SQL
-    kyuubi.engine.share.level=USER
-    kyuubi.session.engine.initialize.timeout=1000000
-    spark.submit.deployMode=cluster
-    spark.executor.instances=2
-    
-    spark.kubernetes.authenticate.driver.serviceAccountName=kyuubi
+    # kyuubi.authentication=LDAP
+    # kyuubi.authentication.ldap.url
+    # kyuubi.authentication.ldap.baseDN
+    # kyuubi.authentication.ldap.domai
+    # kyuubi.authentication.ldap.groupDNPattern
+    # kyuubi.authentication.ldap.userDNPattern
+    # kyuubi.authentication.ldap.groupFilter
+    # kyuubi.authentication.ldap.guidKey=uid
+    # kyuubi.authentication.ldap.groupMembershipKey=member
+    # kyuubi.authentication.ldap.userMembershipKey
+    # kyuubi.authentication.ldap.groupClassKey=groupOfNames
+    # kyuubi.authentication.ldap.binddn
+    # kyuubi.authentication.ldap.bindpw
 
-    spark.kubernetes.executor.volumes.persistentVolumeClaim.data-folder.mount.path=/opt/spark/work-dir/data
-    spark.kubernetes.executor.volumes.persistentVolumeClaim.data-folder.options.claimName=data-folder
+    kyuubi.frontend.protocols=THRIFT_BINARY,REST,MYSQL,TRINO
+    # kyuubi.kubernetes.master.address  외부 Cluster 연결?
+    kyuubi.kubernetes.namespace=kyuubi
+    kyuubi.session.engine.initialize.timeout=1000000 # Timeout for starting the background engine, e.g. SparkSQLEngine, Default: 180000
+
+    # kyuubi.ha.addresses
+
+    # kyuubi.session.engine.trino.connection.url
+    # kyuubi.engine.event.loggers=SPARK
+    # kyuubi.engine.security.enabled=false
+    # kyuubi.engine.trino.memory=1g
+    # kyuubi.engine.hive.memory=1g
+    # kyuubi.engine.yarn.queue=queue
+    # kyuubi.engine.flink.memory=1g
+    # kyuubi.engine.spark
+    # kyuubi.engine.jdbc.connection.url
+    # kyuubi.engine.chat.provider=ECHO,GPT
+    # kyuubi.engine.share.level=USER
+
+  # The value (templated string) is used for log4j2.xml file
+  # See example at conf/log4j2.xml.template https://kyuubi.readthedocs.io/en/master/configuration/settings.html#logging for more details
+  log4j2: ~
+
+# $SPARK_CONF_DIR directory
+sparkConfDir: /opt/spark/conf
+# Spark configuration files
+sparkConf:
+  # The value (templated string) is used for spark-env.sh file
+  # See example at https://github.com/apache/spark/blob/master/conf/spark-env.sh.template and Spark documentation for more details
+  sparkEnv: ~
+  #  sparkEnv: |
+  #    #!/usr/bin/env bash
+  #    export JAVA_HOME=/usr/jdk64/jdk1.8.0_152
+  #    export SPARK_LOG_DIR=/opt/spark/logs
+  #    export SPARK_LOG_MAX_FILES=5
+
+  # The value (templated string) is used for spark-defaults.conf file
+  # See example at https://github.com/apache/spark/blob/master/conf/spark-defaults.conf.template and Spark documentation for more details
+  sparkDefaults: |
+    # CHECKME: UDF는... https://spark.apache.org/docs/latest/sql-ref-syntax-aux-resource-mgmt-add-jar.html
+
+    hive.metastore.warehouse.dir=file:///opt/spark/work-dir/data/spark-warehouse
+
+    spark.executor.instances=2
+    spark.kubernetes.authenticate.driver.serviceAccountName=kyuubi
+    spark.kubernetes.container.image=apache/spark:3.5.3
     spark.kubernetes.driver.volumes.persistentVolumeClaim.data-folder.mount.path=/opt/spark/work-dir/data
     spark.kubernetes.driver.volumes.persistentVolumeClaim.data-folder.options.claimName=data-folder
-    spark.kubernetes.authenticate.driver.serviceAccountName=kyuubi
+    spark.kubernetes.executor.volumes.persistentVolumeClaim.data-folder.mount.path=/opt/spark/work-dir/data
+    spark.kubernetes.executor.volumes.persistentVolumeClaim.data-folder.options.claimName=data-folder
+    spark.kubernetes.file.upload.path=/opt/spark/work-dir/data/tmp
+    spark.kubernetes.namespace=kyuubi
     spark.sql.warehouse.dir=file:///opt/spark/work-dir/data/spark-warehouse
-    hive.metastore.warehouse.dir=file:///opt/spark/work-dir/data/spark-warehouse
+    spark.submit.deployMode=cluster
 
     # spark.kubernetes.driver.ownPersistentVolumeClaim=true
     # spark.kubernetes.driver.reusePersistentVolumeClaim=true
@@ -253,26 +298,6 @@ kyuubiConf:
     # spark.kubernetes.driver.volumns.persistentvolumnclaim.spark-local-dir-1.mount.readonly=false
     # spark.hadoop.mapreduce.fileouputcommitter.algorithm.version=2
 
-  # The value (templated string) is used for log4j2.xml file
-  # See example at conf/log4j2.xml.template https://kyuubi.readthedocs.io/en/master/configuration/settings.html#logging for more details
-  log4j2: ~
-
-# $SPARK_CONF_DIR directory
-sparkConfDir: /opt/spark/conf
-# Spark configuration files
-sparkConf:
-  # The value (templated string) is used for spark-env.sh file
-  # See example at https://github.com/apache/spark/blob/master/conf/spark-env.sh.template and Spark documentation for more details
-  sparkEnv: ~
-  #  sparkEnv: |
-  #    #!/usr/bin/env bash
-  #    export JAVA_HOME=/usr/jdk64/jdk1.8.0_152
-  #    export SPARK_LOG_DIR=/opt/spark/logs
-  #    export SPARK_LOG_MAX_FILES=5
-
-  # The value (templated string) is used for spark-defaults.conf file
-  # See example at https://github.com/apache/spark/blob/master/conf/spark-defaults.conf.template and Spark documentation for more details
-  sparkDefaults: ~
   #  sparkDefaults: |
   #    spark.submit.deployMode=cluster
   #    spark.kubernetes.container.image=apache/spark:3.5.0
